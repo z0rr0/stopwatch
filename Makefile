@@ -17,8 +17,8 @@ run: lint
 	$(GOPATH)/$(BIN)
 
 test: lint
-	# go tool cover -html=ratest_coverage.out
-	# go tool trace ratest.test trace.out
+	# go tool cover -html=coverage.out
+	# go tool trace trace.test trace.out
 	go test -race -v -cover -coverprofile=ratest_coverage.out -trace trace.out github.com/z0rr0/stopwatch
 
 clean:
