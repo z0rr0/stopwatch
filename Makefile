@@ -4,7 +4,7 @@ VERSION=`bash version.sh`
 SOURCEDIR=src/github.com/z0rr0/stopwatch
 
 
-all: test
+all: lint
 
 install:
 	go install -ldflags "$(VERSION)" github.com/z0rr0/stopwatch

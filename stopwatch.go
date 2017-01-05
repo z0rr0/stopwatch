@@ -8,7 +8,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"time"
@@ -23,27 +22,27 @@ var (
 	Revision = "N/A"
 	// Date is build date
 	Date = "2017-01-01 00:00:00"
+	// name is program name
 	name = "Stopwatch"
-
-	errStop = errors.New("stop")
 )
 
 func start(cutout <-chan bool) {
 	startTime := time.Now()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	fmt.Println("\nstart")
+	printTime := func(d time.Duration, format string) {
+		fmt.Printf(format, d.Hours(), d.Minutes(), d.Seconds(), d.Nanoseconds())
+	}
+	ticker := time.NewTicker(20 * time.Millisecond) // 50Hz
+	fmt.Println("--")
 	for {
 		select {
-		case val := <-cutout:
-			if val {
+		case val, ok := <-cutout:
+			printTime(time.Now().Sub(startTime), "\r%4.f:%02.f:%02.f.%v\n")
+			if !ok || val {
 				ticker.Stop()
 				return
 			}
-			d := time.Now().Sub(startTime)
-			fmt.Printf("\r%4.f:%02.f:%02.f.%v\n", d.Hours(), d.Minutes(), d.Seconds(), d.Nanoseconds())
 		case <-ticker.C:
-			d := time.Now().Sub(startTime)
-			fmt.Printf("\r%4.f:%02.f:%02.f.%v", d.Hours(), d.Minutes(), d.Seconds(), d.Nanoseconds())
+			printTime(time.Now().Sub(startTime), "\r%4.f:%02.f:%02.f.%v")
 		}
 	}
 }
@@ -51,9 +50,13 @@ func start(cutout <-chan bool) {
 func watcher(control <-chan rune, ec chan<- error) {
 	var isRun bool
 	cutout := make(chan bool) // true is stop, false - lap
+	defer close(cutout)
 	for {
 		select {
-		case cmd := <-control:
+		case cmd, ok := <-control:
+			if !ok {
+				return
+			}
 			switch cmd {
 			case 113, 81: // quit
 				if isRun {
@@ -104,17 +107,19 @@ func main() {
 		panic(err)
 	}
 	defer termbox.Close()
-	termbox.SetInputMode(termbox.InputEsc)
+	termbox.SetInputMode(termbox.InputCurrent)
 
-	erch := make(chan error)
+	erChan := make(chan error)
 	controls := make(chan rune)
+	defer close(erChan)
+	defer close(controls)
 
 	fmt.Println("S - start/stop, L - lap,  Q - quit")
 
-	go listen(controls, erch)
-	go watcher(controls, erch)
+	go listen(controls, erChan)
+	go watcher(controls, erChan)
 
-	err = <-erch
+	err = <-erChan
 	if err != nil {
 		panic(err)
 	}
